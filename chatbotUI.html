@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BI Dashboard with Chatbot</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f6f8;
+            color: #333333;
+        }
+        #app-container { display: flex; gap: 20px; width: 100%; height: 100%; padding: 20px; box-sizing: border-box; align-items: flex-end; }
+        #dashboard-container { flex: 3; height: 100%; display: flex; flex-direction: column; transition: all 0.3s ease-in-out; }
+        #chatbot-container { flex: 1; height: 100%; display: flex; flex-direction: column; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden; transition: all 0.3s ease-in-out; }
+        iframe { border-radius: 8px; border: 1px solid #e0e0e0; }
+        #chat-header { display: flex; align-items: center; background-color: #333333; color: white; padding: 0 15px; height: 55px; font-size: 18px; font-weight: bold; flex-shrink: 0; }
+        #status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-left: 10px; transition: background-color 0.5s; }
+        
+        /* Brighter online indicator with glow */
+        .status-online { background-color: #1E90FF; box-shadow: 0 0 8px #1E90FF; }
+        .status-offline { background-color: red; }
+
+        #chat-header-buttons { margin-left: auto; }
+        .header-btn { background: none; border: none; color: white; font-size: 24px; font-weight: bold; cursor: pointer; padding: 5px 10px; }
+        
+        #chat-window {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            border-bottom: 1px solid #eeeeee;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .message-container { display: flex; flex-direction: column; max-width: 85%; }
+        .user-message-container { align-self: flex-end; }
+        .bot-message-container { align-self: flex-start; }
+
+        .message {
+            padding: 10px 15px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+        
+        .user-message { background-color: #333333; color: white; border-bottom-right-radius: 4px; }
+        .bot-message { background-color: #f1f1f1; color: #333333; border-bottom-left-radius: 4px; }
+        
+        .sender-label { font-weight: bold; display: block; margin-bottom: 5px; }
+        .message-content { white-space: pre-wrap; }
+
+        /* SQL dropdown styling */
+        .sql-query-toggle {
+            cursor: pointer;
+            color: #007bff;
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+        .sql-query-content {
+            background-color: #f7f9fb;
+            border: 1px solid #ddd;
+            padding: 8px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 13px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+        }
+        
+        .message-actions { display: flex; gap: 10px; margin-top: 8px; margin-left: 10px; }
+        .action-btn { background-color: #e9e9e9; border: 1px solid #dcdcdc; border-radius: 5px; padding: 4px 10px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 5px; }
+        .action-btn:hover { background-color: #dcdcdc; }
+        .sql-result-table { border-collapse: collapse; width: 100%; font-size: 14px; border: 1px solid #ddd; margin-top: 5px; background-color: white; }
+        .sql-result-table th, .sql-result-table td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+        .sql-result-table th { background-color: #f2f2f2; }
+        
+        #chat-form { display: flex; padding: 15px; gap: 10px; background-color: #f9f9f9; flex-shrink: 0; }
+        #user-input { flex-grow: 1; padding: 10px; border: 1px solid #cccccc; border-radius: 5px; font-size: 16px; }
+        #user-input:focus { outline: none; border-color: #333333; }
+        #chat-form button { padding: 10px 20px; border: none; background-color: #333333; color: white; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        #chat-form button:hover { background-color: #555555; }
+        
+        #open-chat-btn { display: none; position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background-color: #333333; color: white; border-radius: 50%; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-size: 28px; cursor: pointer; justify-content: center; align-items: center; z-index: 1000; }
+        
+        body.state-small-window #chatbot-container { height: 65%; }
+        body.state-minimized #chatbot-container { display: none; }
+        body.state-minimized #dashboard-container { flex: 1; }
+        body.state-minimized #open-chat-btn { display: flex; }
+    </style>
+</head>
+<body class="state-small-window">
+
+    <div id="app-container">
+        <div id="dashboard-container">
+            <iframe title="BI Dashboard with Chatbot" width="100%" height="100%" src="https://app.powerbi.com/view?r=eyJrIjoiYzc5NTE3NzktMThmZC00MWJkLWJlOWQtNDE0YjUzYjBjODI2IiwidCI6IjAzMWU1YTdhLWI4ZmItNDdlYS1hMzA2LTdhMTNkMzZhNTUxNCJ9" frameborder="0" allowFullScreen="true"></iframe>
+        </div>
+
+        <div id="chatbot-container">
+            <div id="chat-header">
+                <span>Data Assistant 🤖</span>
+                <span id="status-dot"></span>
+                <div id="chat-header-buttons">
+                    <button class="header-btn" id="small-window-btn">□</button>
+                    <button class="header-btn" id="minimize-btn">−</button>
+                </div>
+            </div>
+            <div id="chat-window"></div>
+            <form id="chat-form">
+                <input type="text" id="user-input" placeholder="Ask a question..." required>
+                <button type="submit">Send</button>
+            </form>
+        </div>
+    </div>
+    
+    <button id="open-chat-btn">💬</button>
+    
+    <script>
+        const body = document.body;
+        const userInputEl = document.getElementById('user-input');
+        const chatForm = document.getElementById('chat-form');
+        const chatWindow = document.getElementById('chat-window');
+        
+        document.getElementById('small-window-btn').addEventListener('click', () => { body.classList.toggle('state-small-window'); body.classList.remove('state-minimized'); });
+        document.getElementById('minimize-btn').addEventListener('click', () => body.classList.add('state-minimized'));
+        document.getElementById('open-chat-btn').addEventListener('click', () => { body.classList.remove('state-minimized'); body.classList.remove('state-small-window'); });
+        userInputEl.addEventListener('focus', () => { body.classList.remove('state-small-window'); body.classList.remove('state-minimized'); });
+        
+        chatForm.addEventListener('submit', handleFormSubmit);
+        chatWindow.addEventListener('click', handleActionButtons);
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            checkBackendStatus();
+            addMessageToChat({ type: 'text', data: 'Hello! How can I help you?' }, 'bot');
+        });
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            const userInput = userInputEl.value.trim();
+            if (!userInput) return;
+
+            addMessageToChat({ type: 'text', data: userInput }, 'user');
+            userInputEl.value = '';
+            const loadingMessage = addMessageToChat({ type: 'text', data: 'Thinking...' }, 'bot');
+
+            try {
+                const response = await fetch('http://192.168.0.186:5001/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: userInput }),
+                });
+                if (!response.ok) throw new Error('Network response was not ok.');
+                const data = await response.json();
+                loadingMessage.remove();
+                addMessageToChat(data, 'bot');
+            } catch (error) {
+                loadingMessage.remove();
+                addMessageToChat({ type: 'text', data: 'Sorry, I ran into an error.' }, 'bot');
+                console.error('Error:', error);
+            }
+        }
+
+        function addMessageToChat(response, sender) {
+            const messageContainer = document.createElement('div');
+            messageContainer.classList.add('message-container', `${sender}-message-container`);
+
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', `${sender}-message`);
+
+            const senderLabel = document.createElement('div');
+            senderLabel.className = 'sender-label';
+            senderLabel.textContent = sender === 'user' ? 'User:' : 'Bot:';
+            
+            const contentSpan = document.createElement('div');
+            contentSpan.className = 'message-content';
+            contentSpan.innerHTML = response.data;
+
+            messageElement.appendChild(senderLabel);
+
+            // Add SQL query dropdown for structured data
+            if (sender === 'bot' && response.type === 'table' && response.sql_query) {
+                const sqlToggle = document.createElement('div');
+                sqlToggle.className = 'sql-query-toggle';
+                sqlToggle.innerHTML = `Show SQL Query ⌄`;
+
+                const sqlContent = document.createElement('div');
+                sqlContent.className = 'sql-query-content';
+                sqlContent.textContent = response.sql_query;
+                sqlContent.style.display = 'none';
+
+                sqlToggle.addEventListener('click', () => {
+                    const isHidden = sqlContent.style.display === 'none';
+                    sqlContent.style.display = isHidden ? 'block' : 'none';
+                    sqlToggle.innerHTML = isHidden ? `Hide SQL Query ^` : `Show SQL Query ⌄`;
+                });
+
+                messageElement.appendChild(sqlToggle);
+                messageElement.appendChild(sqlContent);
+            }
+
+            messageElement.appendChild(contentSpan);
+            messageContainer.appendChild(messageElement);
+
+            if (sender === 'bot' && response.sql_query) {
+                const actionsContainer = document.createElement('div');
+                actionsContainer.classList.add('message-actions');
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'action-btn copy-btn';
+                copyBtn.innerHTML = '📄 Copy';
+                actionsContainer.appendChild(copyBtn);
+
+                if (response.type === 'table') {
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.className = 'action-btn download-btn';
+                    downloadBtn.innerHTML = '💾 Download CSV';
+                    downloadBtn.dataset.rawdata = JSON.stringify(response.raw_data);
+                    actionsContainer.appendChild(downloadBtn);
+                }
+                messageContainer.appendChild(actionsContainer);
+            }
+            
+            chatWindow.appendChild(messageContainer);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return messageContainer;
+        }
+
+        function handleActionButtons(event) {
+            const target = event.target.closest('.action-btn');
+            if (!target) return;
+
+            const messageContainer = target.closest('.bot-message-container');
+            const messageContent = messageContainer.querySelector('.message-content');
+
+            if (target.classList.contains('copy-btn')) {
+                const textToCopy = messageContent.innerText;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    target.innerText = '✅ Copied!';
+                    setTimeout(() => { target.innerHTML = '📄 Copy'; }, 2000);
+                });
+            }
+
+            if (target.classList.contains('download-btn')) {
+                const rawData = JSON.parse(target.dataset.rawdata);
+                downloadAsCSV(rawData);
+            }
+        }
+
+        function downloadAsCSV(jsonData) {
+            if (!jsonData || jsonData.length === 0) return;
+            const headers = Object.keys(jsonData[0]);
+            const csvRows = [
+                headers.join(','),
+                ...jsonData.map(row => 
+                    headers.map(header => JSON.stringify(row[header] || '', (key, value) => value)).join(',')
+                )
+            ];
+            const csvString = csvRows.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'data_export.csv');
+            a.click();
+        }
+
+        async function checkBackendStatus() {
+            const statusDot = document.getElementById('status-dot');
+            try {
+                const response = await fetch('http://192.168.0.186:5001/status');
+                statusDot.className = response.ok ? 'status-online' : 'status-offline';
+            } catch (error) {
+                statusDot.className = 'status-offline';
+            }
+        }
+    </script>
+</body>
+</html>
