@@ -1,7 +1,6 @@
-<<<<<<< HEAD
 # BI_Dashboard_with_RAG_Powered_AI_Chatbot
-=======
-Youtube Video - https://youtu.be/rbg9KOBJUnc
+
+YouTube Video - https://youtu.be/rbg9KOBJUnc
 
 
 # BI Dashboard Chatbot
